@@ -103,24 +103,7 @@ def circleOfInterest_center_oriented(edge, max_r, min_r = 0,
                 if num_points_on_circle > 0:
                     circle_dict[(int(j), int(i), int(r))] += num_points_on_circle/r
     return circle_dict
-#    x, y = np.where(edge>0)
-#    num_points = len(x)
-#    print("number of points of interest {}".format(num_points))
-#    for i in tqdm(range(n_sample)):
-#        indexes = random.sample(range(0, num_points), k=3)
-#        points_x, points_y = x[indexes], y[indexes]
-#        h, k, r = threePointsToCircle(points_x, points_y)
-#        # h : row, k: col
-#        if r <= max_r:
-#            
-##            print("111111")
-##            print(points_x, points_y)
-#            num_points_on_circle = numPointsOnCircle(edge,  col=k , row=h, r=r, 
-#                                                     threshold_r=r_threshold)
-#          
-#            if num_points_on_circle > 0:
-#                circle_dict[(int(h), int(k), int(r))] += num_points_on_circle
-    
+
 #%%    
 def gray2RGB(gray):
     h, w = gray.shape
