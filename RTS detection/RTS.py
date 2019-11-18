@@ -61,7 +61,6 @@ def numPointsOnCircle(edge, col, row, r, threshold_r = R_THRESHOLD):
     # y: row, x:col
     for j in range(max(0, int(col-outer_r)), min(w, int(col+outer_r))):  # row
         for i in range(max(0, int(row-outer_r)), min(h, int(row+outer_r))): # col
-            
             if edge[i][j] > 0:
                 dis = np.sqrt((j-col)**2 + (i-row)**2)
                 if dis>=inner_r and dis<=outer_r:
@@ -92,17 +91,18 @@ def circleOfInterest_random(edge, n_sample, max_r, min_r, r_threshold = R_THRESH
 #%%
 def circleOfInterest_center_oriented(edge, max_r, min_r = 0,
                                      r_threshold = R_THRESHOLD):
-    circle_dict = defaultdict(int)
     h, w = edge.shape
+#    tt()
+    stock_circle = np.zeros((h, w, int(max_r)))
     x, y = np.where(edge>0)
-    for i in tqdm(range(h)):
-        for j in range(w):
-            for r in range(int(min_r), int(max_r)):
-                num_points_on_circle = numPointsOnCircle(edge, col=j, row=h,
-                                                         r=r, threshold_r=r_threshold)
-                if num_points_on_circle > 0:
-                    circle_dict[(int(j), int(i), int(r))] += num_points_on_circle/r
-    return circle_dict
+    for index_points in tqdm(range(len(x))):
+        p_x, p_y = x[index_points], y[index_points]
+        for c_x in range(max(0,p_x-max_r), min(p_x+max_r, h)):
+            for c_y in range(max(0, p_y-max_r), min(p_y+max_r, w)):
+                r = int(np.sqrt((c_x-p_x)**2 + (c_y-p_y)**2))
+                if r >min_r and r<max_r:
+                    stock_circle[c_x, c_y, r] += 1/r
+    return stock_circle
 
 #%%    
 def gray2RGB(gray):
@@ -133,7 +133,7 @@ def addCircle(im, col, row, r, delta_r=R_THRESHOLD, c=(255, 0, 0)):
 if __name__ == "__main__":
     image_names = ["RTS01org.jpg", "RTS02.jpg", "RTS03.jpg", "RTS04.jpg"]
     image_name = "sample003.jpg"
-    image_name = image_names[0]
+    image_name = image_names[1]
     im = cv2.imread(image_name)
     im[...,[0,2]] = im[...,[2,0]]
     # im = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
@@ -148,19 +148,41 @@ if __name__ == "__main__":
     plt.imshow(edge)
 #%%
     print("Number of points of interest: {}".format(np.sum(edge)))
-    random = False
-    if random:
+    random_sample = False
+    if random_sample:
         circle_dict = circleOfInterest_random(edge, 100000, max_r=30, min_r=10)
-    else:
-        circle_dict = circleOfInterest_center_oriented(edge, max_r=30, min_r=10,
-                                                       r_threshold=R_THRESHOLD)
-    # key: row, col, radius
-#%%
-    sorted_circle = sorted(circle_dict.items(), key=lambda x: x[1], reverse=True)
-#%%
+        sorted_circle = sorted(circle_dict.items(), key=lambda x: x[1], reverse=True)
     res_image = gray2RGB(edge)
     for circle in sorted_circle[:2]:
         c = circle[0]
+        addCircle(res_image, col=c[1], row=c[0], r=c[2])
+    plt.imshow(res_image)
+    # key: row, col, radius
+#%%
+    circle_map = circleOfInterest_center_oriented(edge, max_r=30, min_r=20,
+                                                       r_threshold=R_THRESHOLD)
+#%%
+    k_circles = 20
+    circle_dict = {}
+    votes = [0] * k_circles
+    circles = [None] * k_circles
+    shape = circle_map.shape
+    for i in tqdm(range(shape[0])):
+        for j in range(shape[1]):
+            for k in range(shape[2]):
+                min_votes = min(votes)
+                current_v = circle_map[i,j,k]
+                if current_v>min_votes:
+                    bad_index = votes.index(min_votes)
+                    votes[bad_index] = current_v
+                    circles[bad_index] = (i,j,k)
+                    
+#%%
+    index_order = np.argsort(votes)
+    circles = np.array(circles)[index_order]
+#%%
+    res_image = gray2RGB(edge)
+    for c in circles[:2]:
         addCircle(res_image, col=c[1], row=c[0], r=c[2])
     plt.imshow(res_image)
 #%%
