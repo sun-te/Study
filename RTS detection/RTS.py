@@ -1,10 +1,18 @@
-
-import cv2 
+try:
+    # opencv用来canny edge detection
+    import cv2 
+except:
+    print("Please install opencv: pip install opencv-python")
+try:
+    # 看循环进度
+    from tqdm import tqdm
+except:
+    print("Plase install tqdm: pip install tqdm")
 import matplotlib.pyplot as plt
 import numpy as np
 import random
 from collections import defaultdict
-from tqdm import tqdm
+
 
 import os
 """
@@ -12,6 +20,7 @@ Change to your local working space
 """
 os.chdir("C:\\Users\\TeTe\\Documents\\PythonProject\\python_learn\\RTS detection\\")
 
+# R threshold for ransac
 R_THRESHOLD = 1
 def threePointsToCircle(points_x, points_y):
     """
@@ -84,8 +93,6 @@ def circleOfInterest_random(edge, n_sample, max_r, min_r, r_threshold = R_THRESH
         h, k, r = threePointsToCircle(points_x, points_y)
         # h : row, k: col
         if r <= max_r and r>=min_r:
-#            print("111111")
-#            print(points_x, points_y)
             num_points_on_circle = numPointsOnCircle(edge,  col=k , row=h, r=r, 
                                                      threshold_r=r_threshold)
           
@@ -99,7 +106,6 @@ def circleOfInterest_center_oriented(edge, max_r, min_r = 0,
     Center oriented detection
     """
     h, w = edge.shape
-#    tt()
     stock_circle = np.zeros((h, w, int(max_r+1)))
     x, y = np.where(edge>0)
     for index_points in tqdm(range(len(x))):
@@ -118,12 +124,6 @@ def circleOfInterest_center_oriented(edge, max_r, min_r = 0,
                 r = Z[j, i]
                 if r> min_r and r<max_r:
                     stock_circle[c_x[i],c_y[j], int(round(r))] += 1./int(r)
-#        for c_x in range(max(0,p_x-max_r), min(p_x+max_r, h)):
-#            for c_y in range(max(0, p_y-max_r), min(p_y+max_r, w)):
-#                r = round(np.sqrt((c_x-p_x)**2 + (c_y-p_y)**2))
-#                if r >min_r and r<max_r:
-#                    print(c_x, c_y, r)
-#                    stock_circle[c_x, c_y, r] += 1/r
     return stock_circle
    
 def gray2RGB(gray):
@@ -170,39 +170,42 @@ def maximum_suppresion(circle,  votes,threshold):
                 else:
                     circle[i] = 0
     return circle[np.where(circle[:,0]>0)], votes[np.where(circle[:,0]>0)]
-#%%
 
 if __name__ == "__main__":
     """
-    请把之形目录放在图片目录下
+    请把目录放在图片目录下
     """
+    
     image_names = ["RTS01org.jpg", "RTS02.jpg", "RTS03.jpg", "RTS04.jpg"]
-    image_name = image_names[0]
+    # Please change your image here:
+    image_name = image_names[2]
     # image_name = "sample003.jpg"
     im = cv2.imread(image_name)
-    # im[...,[0,2]] = im[...,[2,0]]
+    im[...,[0,2]] = im[...,[2,0]]
     image = im.copy()
     im = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
     im = cv2.GaussianBlur(image, (3,3), 1)
     
     plt.imshow(im) 
     plt.show()
-    
+    ####################################
+    ##########hyperparameter############
+    votes_threshold = 0.772
     max_r, min_r = 27, 12
     Canny_threshold1, Canny_threshold2 = 100,200
+    ####################################
     """
     低于阈值1的像素点会被认为不是边缘；
     高于阈值2的像素点会被认为是边缘；
     在阈值1和阈值2之间的像素点,若与第2步得到的边缘像素点相邻，则被认为是边缘，否则被认为不是边缘。
     """
-    #for image 1
+
     edge = cv2.Canny(im, threshold1 = Canny_threshold1, threshold2 = Canny_threshold2)
-    #edge = cv2.Canny(im, threshold1 = 100, threshold2 = 450)
+
     plt.imshow(edge)
     plt.show()
 
-    print("Number of points of interest: {}".format(np.sum(edge>0)))
-#%%  
+    print("Number of points of interest: {}".format(np.sum(edge>0)))  
     """
     True: run detection with RANSAC
     False: run with center oriented detecition method
@@ -239,18 +242,12 @@ if __name__ == "__main__":
 
     # Maximum suppression
     new_circles, new_votes = maximum_suppresion(circles, votes, threshold=20)
-    print(new_circles)
-    #%%
     print("Top 10 votes: {}".format(votes[:10]))
     print("New votes {}".format(new_votes))
     print(new_votes[0]/new_votes[1])
     res_image = gray2RGB(edge)
-    # plot k most voted circle
-    # 0.98 for 1
-    # 
-#    vv = np.exp(new_votes)
-#    for c in circles[np.where(votes>max(votes)*0.9)]:
-    for c in new_circles[np.where(new_votes>max(new_votes)*0.772)]:
+
+    for c in new_circles[np.where(new_votes>max(new_votes)*votes_threshold)]:
         addCircle(res_image, col=c[1], row=c[0], r=c[2])
     fig = plt.figure()
     plt.imshow(res_image)
