@@ -1,12 +1,16 @@
-# python_learn
-To learn python for data analyse and web scrapping
+# python早，身体好
+@SJTU
+****
+**Courses**
+包含课上的一些代码，以及平日上课遇到的课程用代码、作业等
 
-- 字节跳动：在线考题，一条路上计算与厕所（0， 1表示）的距离
+**Daily_practice**
+日常的算法训练
 
-- Optimization_steepest_gradient: 结构优化课程中的函数梯度下降的几种方法，比如steepest gradient，普通的gradient和internal search
+**Interview_test**
+面试遇到的算法问题
 
-- sort: 几种常见的排序方法
 
-- 海康威视： 20191115面试时候的现场笔试题
 
-- RTS detection: round traffic sign detection with *Hough* tranform and *RANSAC* method
+
+
