@@ -18,7 +18,7 @@ import os
 """
 Change to your local working space
 """
-os.chdir("C:\\Users\\TeTe\\Documents\\PythonProject\\python_learn\\RTS detection\\")
+os.chdir("..\\RTS detection\\")
 
 # R threshold for ransac
 R_THRESHOLD = 1
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     
     image_names = ["RTS01org.jpg", "RTS02.jpg", "RTS03.jpg", "RTS04.jpg"]
     # Please change your image here:
-    image_name = image_names[2]
+    image_name = image_names[1]
     # image_name = "sample003.jpg"
     im = cv2.imread(image_name)
     im[...,[0,2]] = im[...,[2,0]]
@@ -188,8 +188,8 @@ if __name__ == "__main__":
     
     plt.imshow(im) 
     plt.show()
-    ####################################
     ##########hyperparameter############
+    ransac_iterations = 10000
     votes_threshold = 0.772
     max_r, min_r = 27, 12
     Canny_threshold1, Canny_threshold2 = 100,200
@@ -213,9 +213,10 @@ if __name__ == "__main__":
     random_sample = False
     
     if random_sample:
-        circle_dict = circleOfInterest_random(edge, 100, max_r=max_r, min_r=min_r)
+        circle_dict = circleOfInterest_random(edge, ransac_iterations, max_r=max_r, min_r=min_r)
         sorted_circle = sorted(circle_dict.items(), key=lambda x: x[1], reverse=True)
-        circles = [c[0] for c in sorted_circle]
+        votes = np.array(sorted_circle)[:,1]
+        circles = np.array([c[0] for c in sorted_circle])
     else:
         # Fill the (x,y,r) configuration space
         circle_map = circleOfInterest_center_oriented(edge, max_r=max_r, min_r=min_r,
