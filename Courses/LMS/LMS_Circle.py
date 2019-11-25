@@ -43,6 +43,11 @@ def data_generator(x=0,y=0,r=1):
     data = np.array([(3.4, 12.47), (2.9, 11.70), (2.0, 11.34), (1.5, 10.57),
     (1.5, 9.65), (1.2, 8.85), (0.8, 8.00), (1.1, 7.13), (1.2, 6.27), (1.8, 5.58),
     (2.3, 4.92), (2.8, 4.13), (3.6, 3.77)])
+
+    x_set = [3.34264,   3.00321,   1.85892,   1.41501 ,  1.65205,   1.26188,   0.58662,   1.04786 ,  1.17716 ,  1.95943  , 2.47808 ,  2.72051  , 3.61075]
+    y_set = [12.6027,   11.5714,   11.4748,   10.6471,    9.5825,    8.8355 ,   8.0000 ,   7.1268  ,  6.2446  ,  5.6672 ,  5.0448   , 4.0917  ,  3.8617]
+
+    data = np.array([x_set, y_set]).T
     return data
 
 def f(data, x, y, r):
@@ -53,10 +58,11 @@ def f(data, x, y, r):
 def mse_erro(data, x, y, r):
     deviation = f(data, x, y ,r)
     error = np.sqrt(np.mean(deviation**2))
+    error = np.sum(deviation**2)
     return error
 
 def gradient(data, x, y, r, dx=1e-6, dy=1e-6, dr=1e-6):
-    print(x,y,r)
+    #print("Current [x,y,r]: {} {} {}".format(x,y,r))
     ans = np.zeros([len(data), 3])
     ans[:, 0] = (f(data, x+dx, y, r) - f(data, x-dx, y, r))/ (2*dx)
     ans[:, 1] = (f(data, x, y+dy, r) - f(data, x, y-dy, r))/ (2*dy)
@@ -70,6 +76,7 @@ def find_init(data):
     p1 = data[x_min_index]
     p2 = data[y_max_index]
     p3 = data[y_min_index]
+    print(p1, p2, p3)
     points = np.array([p1,p2,p3]).T
     x, y, r = threePointsToCircle(points[0], points[1])
 
@@ -83,12 +90,17 @@ def find_circle(data, n_step=10, init=None):
         print("Initialize the data with {}".format(alpha))
         plot_result(data, alpha, "Initial Config")
     # alpha = np.array([6,8,3], dtype=np.float64)
+    errors = []
     for i in range(n_step):
+
+        e = mse_erro(data, alpha[0], alpha[1], alpha[2])
+        print("Square error: {}".format(e))
+        errors.append(e)
         grad = gradient(data, alpha[0], alpha[1], alpha[2])
         incremental = np.linalg.inv(np.matmul(grad.T,grad))@(grad.T)@f(data, alpha[0], alpha[1], alpha[2])
         alpha -= incremental
-        print(mse_erro(data, alpha[0], alpha[1], alpha[2]))
-    return alpha
+
+    return alpha, errors
 
 def plot_result(data, alpha, title=""):
     fig = plt.figure(figsize=[5,5])
@@ -107,6 +119,8 @@ if __name__ == "__main__":
 
     data = data_generator()
     error = mse_erro(data, 6,8,3)
-    alpha = find_circle(data)
+    alpha, errors = find_circle(data)
     plot_result(data, alpha, "Final Config")
+    plt.plot(errors)
+    plt.show()
     print("OK")
