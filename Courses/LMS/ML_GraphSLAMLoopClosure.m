@@ -101,7 +101,7 @@ plot(pos_msr_o(1,:), pos_msr_o(2,:), '+r', 'MarkerSize', 12, 'LineWidth', 2); pl
 plot(pos(1,:), pos(2,:), '+b', 'MarkerSize', 12, 'LineWidth', 2); plot(pos(1,:), pos(2,:), 'b');
 hold off; xlim([-20,50]); ylim([-10,70]); axis equal; grid on;
 
-
+disp(pos);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
