@@ -30,38 +30,38 @@ def threePointsToCircle(points_x, points_y):
     """
     x1, x2, x3 = points_x
     y1, y2, y3 = points_y
-    x12 = x1 - x2  
-    x13 = x1 - x3  
-    y12 = y1 - y2  
-    y13 = y1 - y3  
-    y31 = y3 - y1  
-    y21 = y2 - y1  
-    x31 = x3 - x1  
-    x21 = x2 - x1  
-    # x1^2 - x3^2  
-    sx13 = pow(x1, 2) - pow(x3, 2)  
-    # y1^2 - y3^2  
-    sy13 = pow(y1, 2) - pow(y3, 2)  
-    sx21 = pow(x2, 2) - pow(x1, 2)  
-    sy21 = pow(y2, 2) - pow(y1, 2)  
-    f = (((sx13) * (x12) + (sy13) * 
-          (x12) + (sx21) * (x13) + 
-          (sy21) * (x13)) // (2 * 
-          ((y31) * (x12) - (y21) * (x13))))         
-    g = (((sx13) * (y12) + (sy13) * (y12) + 
-          (sx21) * (y13) + (sy21) * (y13)) // 
-          (2 * ((x31) * (y12) - (x21) * (y13))))  
-    c = (-pow(x1, 2) - pow(y1, 2) - 
-         2 * g * x1 - 2 * f * y1)  
-    h = -g  
-    k = -f  
+    x12 = x1 - x2
+    x13 = x1 - x3
+    y12 = y1 - y2
+    y13 = y1 - y3
+    y31 = y3 - y1
+    y21 = y2 - y1
+    x31 = x3 - x1
+    x21 = x2 - x1
+    # x1^2 - x3^2
+    sx13 = pow(x1, 2) - pow(x3, 2)
+    # y1^2 - y3^2
+    sy13 = pow(y1, 2) - pow(y3, 2)
+    sx21 = pow(x2, 2) - pow(x1, 2)
+    sy21 = pow(y2, 2) - pow(y1, 2)
+    f = (((sx13) * (x12) + (sy13) *
+          (x12) + (sx21) * (x13) +
+          (sy21) * (x13)) // (2 *
+          ((y31) * (x12) - (y21) * (x13))))
+    g = (((sx13) * (y12) + (sy13) * (y12) +
+          (sx21) * (y13) + (sy21) * (y13)) //
+          (2 * ((x31) * (y12) - (x21) * (y13))))
+    c = (-pow(x1, 2) - pow(y1, 2) -
+         2 * g * x1 - 2 * f * y1)
+    h = -g
+    k = -f
     sqr_of_r = h * h + k * k - c
     r = np.sqrt(sqr_of_r)
     return (h, k ,r)
 
 def numPointsOnCircle(edge, col, row, r, threshold_r = R_THRESHOLD):
     """
-    Count with a threshold delta_r, how many edge points on a circle centered 
+    Count with a threshold delta_r, how many edge points on a circle centered
     at (row, col)
     """
     inner_r = r - threshold_r
@@ -93,11 +93,11 @@ def circleOfInterest_random(edge, n_sample, max_r, min_r, r_threshold = R_THRESH
         h, k, r = threePointsToCircle(points_x, points_y)
         # h : row, k: col
         if r <= max_r and r>=min_r:
-            num_points_on_circle = numPointsOnCircle(edge,  col=k , row=h, r=r, 
+            num_points_on_circle = numPointsOnCircle(edge,  col=k , row=h, r=r,
                                                      threshold_r=r_threshold)
-          
+
             if num_points_on_circle > 0:
-                circle_dict[(int(h), int(k), round(r))] += num_points_on_circle/r   
+                circle_dict[(int(h), int(k), round(r))] += num_points_on_circle/r
     return circle_dict
 
 def circleOfInterest_center_oriented(edge, max_r, min_r = 0,
@@ -110,10 +110,10 @@ def circleOfInterest_center_oriented(edge, max_r, min_r = 0,
     x, y = np.where(edge>0)
     for index_points in tqdm(range(len(x))):
         p_x, p_y = x[index_points], y[index_points]
-        
+
         c_x = np.array(range(max(0, p_x-max_r), min(p_x+max_r, h)))
         c_y = np.array(range(max(0, p_y-max_r), min(p_y+max_r, w)))
-        
+
         dev_x = (c_x - p_x)**2
         dev_y = (c_y - p_y)**2
         x_mesh, y_mesh  = np.meshgrid(dev_x, dev_y)
@@ -125,7 +125,7 @@ def circleOfInterest_center_oriented(edge, max_r, min_r = 0,
                 if r> min_r and r<max_r:
                     stock_circle[c_x[i],c_y[j], int(round(r))] += 1./int(r)
     return stock_circle
-   
+
 def gray2RGB(gray):
     """
     Convert gray 2 a simple RGB three layer image
@@ -153,7 +153,7 @@ def addCircle(im, row, col, r, delta_r=R_THRESHOLD, color=(255, 0, 0)):
             dis = np.sqrt((j-col)**2 + (row-i)**2)
             if dis>=inner_r and dis<=outer_r:
                 im[i, j] = color
-    return 
+    return
 
 
 def maximum_suppresion(circle,  votes,threshold):
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     """
     请把目录放在图片目录下
     """
-    
+
     image_names = ["RTS01org.jpg", "RTS02.jpg", "RTS03.jpg", "RTS04.jpg"]
     # Please change your image here:
     image_name = image_names[1]
@@ -185,8 +185,8 @@ if __name__ == "__main__":
     image = im.copy()
     im = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
     im = cv2.GaussianBlur(image, (3,3), 1)
-    
-    plt.imshow(im) 
+
+    plt.imshow(im)
     plt.show()
     ##########hyperparameter############
     ransac_iterations = 10000
@@ -205,13 +205,13 @@ if __name__ == "__main__":
     plt.imshow(edge)
     plt.show()
 
-    print("Number of points of interest: {}".format(np.sum(edge>0)))  
+    print("Number of points of interest: {}".format(np.sum(edge>0)))
     """
     True: run detection with RANSAC
     False: run with center oriented detecition method
     """
     random_sample = False
-    
+
     if random_sample:
         circle_dict = circleOfInterest_random(edge, ransac_iterations, max_r=max_r, min_r=min_r)
         sorted_circle = sorted(circle_dict.items(), key=lambda x: x[1], reverse=True)
