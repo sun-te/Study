@@ -2,9 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, Polygon, Rectangle
 import matplotlib.transforms as transforms
-from util import confidence_ellipse, validation_rotation, rotation_matrix, close_polygone
+from util import confidence_ellipse, validation_rotation, rotation_matrix
 from util import compute_proba, Point, is_intersected
-from ipdb import set_trace as tt
 POS_RATIO = 0.3
 
 
@@ -169,7 +168,8 @@ class Collision:
         self.demo_robot = None
         self.robot_corner = None
 
-    def cbPolygon(self, robot_corner=None, plot=False, ax=None):
+    def cbPolygon(self, robot_corner=None, plot=False, ax=None, circular=False):
+
         if robot_corner is None:
             if self.obstacle is None or self.robot is None:
                 raise ValueError("No registered robot or obstacle, please provide both")
@@ -191,6 +191,14 @@ class Collision:
 
         # We suppose the bounding box of the obstacle is always a rectangular
         obst_box = self.obstacle.collision_box()
+        if circular:
+            radius = np.linalg.norm(self.obstacle.corner[1] - np.array([self.obstacle.cx, self.obstacle.cy]))
+            obst_box = {
+                "up": radius,
+                "down": radius,
+                "left": radius,
+                "right": radius
+            }
         w, h = obst_box['right'] + obst_box['left'], obst_box['up'] + obst_box['down']
         cb_pts = []
         for pts in robot_corner:
@@ -301,7 +309,7 @@ class Collision:
         demo_obst = Obstacle(demo_center[0], demo_center[1],
                              width=self.obstacle.width, length=self.obstacle.length,
                              angle=self.obstacle.angle * 180 / np.pi,
-                             pos_cov=W@self.obstacle.pos_cov@W.T)
+                             pos_cov=W @ self.obstacle.pos_cov @ W.T)
 
 
         transformed_bbx = bounding_box_corner @ W.T
@@ -359,7 +367,6 @@ class Collision:
         ans = compute_proba(self.robot.corner, np.array([self.obstacle.cx, self.obstacle.cy]), var=cov[0, 0])
         return ans
 
-
     def monteCarlo(self, num=5000):
         pos_cov = self.obstacle.pos_cov
         # the gaussian has 99% probability within +- 2.58 sigma
@@ -403,7 +410,7 @@ class Collision:
 
 if __name__ == "__main__":
     # Firstly, let's verify some functionality
-    # Idealy, the transformed data should be of covariance of
+    # Ideally, the transformed data should be of covariance of
     # Identity matrix, which means that the equal probability line should be
     # a circle
     for i in range(3):
@@ -453,10 +460,10 @@ if __name__ == "__main__":
     collision = Collision()
     collision.robot = Robot(0, 0, width=width, length=length, angle=0)
 
-    figure = plt.figure(figsize=[8, 6])
+    figure = plt.figure(figsize=[8, 7])
     ax = figure.add_subplot(111, aspect='equal')
     ax.set_xlim([-6, 10])
-    ax.set_ylim([-6, 6])
+    ax.set_ylim([-8, 6])
     collision.robot.plot(ax)
     initial_state = [8, 3, 180]
     collision.obstacle = Obstacle(initial_state[0], initial_state[1],
@@ -468,10 +475,11 @@ if __name__ == "__main__":
                          [6, 3], [4, 3], [2, 3],
                          [0.2, 2.8], [-0.5, 2.5], [-1.7, 1.5],
                          [-2.2, 0.5], [-2.2, -1], [-2.2, -2.5],
+                         [-2.2, -3.5], [-2.2, -4]
                          ])
     # tt()
-    angle = np.array([0, 0, 0, 0, 30, 40, 60, 70, 80 ,90 ,90]) + 180
-    uncertainty = np.exp(np.linspace(0.1, 1.5, num=10)) * 0.25
+    angle = np.array([0, 0, 0, 0, 30, 40, 60, 70, 80 ,90 ,90, 90, 90]) + 180
+    uncertainty = np.exp(np.linspace(0.1, 1.5, num=12)) * 0.25
     # uncertainty = np.ones(10) * 0.5
     robot_corner = collision.robot.corner
     real_proba_list = []
@@ -482,24 +490,39 @@ if __name__ == "__main__":
                                   width=width, length=length,
                                   angle=angle[i])
         collision.obstacle.pos_cov *= uncertainty[i] ** 2
-        pos_cov = collision.obstacle.pos_cov
         collision.obstacle.ang_var *= uncertainty[i]
-        real_proba = collision.monteCarlo(num=1000)
-        print("Real probability : {}".format(real_proba))
-        real_proba_list.append(real_proba)
         collision.obstacle.plot(ax)
         collision.cbPolygon()
         t_bbx, obst_center = collision.transformed_cb()
-
         proba_est = compute_proba(obst_center=obst_center, cb=t_bbx)
-
         upper_bound_list.append(proba_est)
         print("Collision probability upper bound: {}".format(proba_est))
 
+
+        collision.obstacle = Obstacle(position[i, 0], position[i, 1],
+                                      width=width, length=length,
+                                      angle=angle[i])
+        collision.obstacle.pos_cov *= uncertainty[i] ** 2
+        collision.cbPolygon(circular=True)
+        t_bbx, obst_center = collision.transformed_cb()
+        proba_cir = compute_proba(obst_center=obst_center, cb=t_bbx)
+        circ_proba_list.append(proba_cir)
+        print("Cicular bound: {}".format(proba_cir))
+
+
+        # Real probability
+        real_proba = collision.monteCarlo(num=1000)
+        real_proba_list.append(real_proba)
+        print("Real probability : {}".format(real_proba))
+
+
+
     ax.set_title("Robot-Obstacle Collision Detection")
     plt.show()
-    plt.plot(real_proba_list, label='True Probability')
-    plt.plot(upper_bound_list, label='Elaborated Upper Bound')
+    plt.plot(real_proba_list, 'go--', c='b', label='True Probability')
+    plt.plot(upper_bound_list, 'go-', linewidth=3, label='Elaborated Upper Bound', c='r')
+    plt.plot(circ_proba_list, 'go--', label="Circular Bound", c='g')
+    plt.ylim([-0.1, 1])
     plt.xlabel("trajectory point, k")
     plt.ylabel("collision probability")
     plt.title("Probability comparison")
