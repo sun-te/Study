@@ -4,4 +4,4 @@ This code is done to make a better probabilistic upper bound for the obstacle de
 
 To run the code, please type:
 
-``python col_prob.py```
+```python col_prob.py```
