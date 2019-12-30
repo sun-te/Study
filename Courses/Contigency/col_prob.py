@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, Polygon, Rectangle
 import matplotlib.transforms as transforms
 from util import confidence_ellipse, validation_rotation, rotation_matrix, close_polygone
-from util import compute_proba, monteCarlo
+from util import compute_proba, Point, is_intersected
 from ipdb import set_trace as tt
 POS_RATIO = 0.3
 
@@ -344,53 +344,105 @@ class Collision:
             ax2.add_artist(rot_pg)
             demo_obst_rot.plot(ax2, transformer=W)
             ax2.legend([plot_rotated_bbx, rot_pg], ["bounding box", 'rotated cb polygon'])
-        print("Collision probability upper bound: {}".format(compute_proba(bounding_box_corner, demo_center)))
+        # print("Collision probability upper bound: {}".format(compute_proba(bounding_box_corner, demo_center)))
         return bounding_box_corner, demo_center
 
+    def circle_proba(self):
+        cov = self.obstacle.pos_cov
+        eig_value = np.linalg.eigvals(cov)
+        rot_matrix = rotation_matrix(self.obstacle.angle)
+        inv_rot = np.linalg.inv(rot_matrix)
+        cov = inv_rot@cov@inv_rot.T
+        # print(cov)
+        # tt()
+        var = np.max(eig_value)
+        ans = compute_proba(self.robot.corner, np.array([self.obstacle.cx, self.obstacle.cy]), var=cov[0, 0])
+        return ans
+
+
+    def monteCarlo(self, num=5000):
+        pos_cov = self.obstacle.pos_cov
+        # the gaussian has 99% probability within +- 2.58 sigma
+        ang_scale = self.obstacle.ang_var / 2.58
+        ang = self.obstacle.angle * 180 / np.pi
+        x, y = self.obstacle.cx, self.obstacle.cy
+        center = np.random.multivariate_normal([x, y], cov=pos_cov, size=num)
+        angs = np.random.normal(loc=ang, scale=ang_scale, size=num)
+
+        count = 0
+        for i in range(num):
+            z = center[i]
+            a = angs[i]
+
+            obst = Obstacle(width=self.obstacle.width, length=self.obstacle.length, angle=a,
+                            x=z[0], y=z[1])
+            # corner = obst.generate()
+            # print(obst.angle - self.obstacle.angle)
+            # print(z - np.array([self.obstacle.cx, self.obstacle.cy]))
+            # print(corner - self.obstacle.corner)
+            # obst.plot()
+            # self.obstacle.plot()
+            # plt.show()
+            flag = False
+            for i in range(4):
+                if flag:
+                    break
+                # the two points
+                robot_a = Point(self.robot.corner[i][0], self.robot.corner[i][1])
+                robot_b = Point(self.robot.corner[(i + 1) % 4][0], self.robot.corner[(i + 1) % 4][1])
+                for j in range(4):
+                    obst_c = Point(obst.corner[j][0], obst.corner[j][1])
+                    obst_d = Point(obst.corner[(j + 1) % 4][0], obst.corner[(j + 1) % 4][1])
+                    flag = is_intersected(robot_a, robot_b, obst_c, obst_d)
+                    if flag:
+                        count += 1
+                        break
+        ans = count / num
+        return ans
 
 
 if __name__ == "__main__":
-    # # Firstly, let's verify some functionality
-    # # Idealy, the transformed data should be of covariance of
-    # # Identity matrix, which means that the equal probability line should be
-    # # a circle
-    # for i in range(3):
-    #     validation_rotation()
-    #
-    # ##########################################################
-    # # This part is for the validation of the implementation  #
-    # # for probability upper bound computation                #
-    # ##########################################################
-    # figure = plt.figure(figsize=[15,5])
-    # ax = figure.add_subplot(131, aspect='equal')
-    # ax.set_xlim([-10, 10])
-    # ax.set_ylim(  [-10, 10])
-    # ax.set_title("Figure with demo obstacle")
-    # collision = Collision()
-    # collision.robot = Robot(0, 0, 4.5, 2, 0)
-    # collision.obstacle = Obstacle(9, 8, 4.5, 2, 45)
-    # # collision.obstacle.plot(ax)
-    # # collision.robot.plot(ax)
-    # corner = np.array([[1, 0],
-    #                    [0.5, -np.sqrt(3)/2],
-    #                    [-0.5, -np.sqrt(3)/2],
-    #                    [-1, 0],
-    #                    [-0.5, np.sqrt(3)/2],
-    #                    [0.5, np.sqrt(3)/2]]) * 5
-    # # a hexagon like robot area
-    # collision.cbPolygon(robot_corner=corner, ax=ax, plot=True)
-    # # de-comment the line below to have a rectangular robot
-    # # collision.cbPolygon(ax=ax, plot=True)
-    # ax2 = figure.add_subplot(132, aspect='equal')
-    # ax2.set_xlim([-7, 7])
-    # ax2.set_ylim([-7, 7])
-    # ax2.set_title("Figure with demo obstacle")
-    # ax3 = figure.add_subplot(133, aspect='equal')
-    # ax3.set_title("Figure with real obstacle")
-    # ax3.set_xlim([-7, 7])
-    # ax3.set_ylim([-7, 7])
-    # collision.transformed_cb(plot=True, ax1=ax2, ax2=ax3)
-    # plt.show()
+    # Firstly, let's verify some functionality
+    # Idealy, the transformed data should be of covariance of
+    # Identity matrix, which means that the equal probability line should be
+    # a circle
+    for i in range(3):
+        validation_rotation()
+
+    ##########################################################
+    # This part is for the validation of the implementation  #
+    # for probability upper bound computation                #
+    ##########################################################
+    figure = plt.figure(figsize=[15,5])
+    ax = figure.add_subplot(131, aspect='equal')
+    ax.set_xlim([-10, 10])
+    ax.set_ylim(  [-10, 10])
+    ax.set_title("Figure with demo obstacle")
+    collision = Collision()
+    collision.robot = Robot(0, 0, 4.5, 2, 0)
+    collision.obstacle = Obstacle(8, 6.5, 4.5, 2, 45)
+    # collision.obstacle.plot(ax)
+    # collision.robot.plot(ax)
+    corner = np.array([[1, 0],
+                       [0.5, -np.sqrt(3)/2],
+                       [-0.5, -np.sqrt(3)/2],
+                       [-1, 0],
+                       [-0.5, np.sqrt(3)/2],
+                       [0.5, np.sqrt(3)/2]]) * 5
+    # a hexagon like robot area
+    collision.cbPolygon(robot_corner=corner, ax=ax, plot=True)
+    # de-comment the line below to have a rectangular robot
+    # collision.cbPolygon(ax=ax, plot=True)
+    ax2 = figure.add_subplot(132, aspect='equal')
+    ax2.set_xlim([-7, 7])
+    ax2.set_ylim([-7, 7])
+    ax2.set_title("Figure with demo obstacle")
+    ax3 = figure.add_subplot(133, aspect='equal')
+    ax3.set_title("Figure with real obstacle")
+    ax3.set_xlim([-7, 7])
+    ax3.set_ylim([-7, 7])
+    collision.transformed_cb(plot=True, ax1=ax2, ax2=ax3)
+    plt.show()
 
     #########################################
     # This part is for the computation of   #
@@ -419,21 +471,37 @@ if __name__ == "__main__":
                          ])
     # tt()
     angle = np.array([0, 0, 0, 0, 30, 40, 60, 70, 80 ,90 ,90]) + 180
-    # uncertainty = np.exp(np.linspace(0.1, 1.5, num=10)) * 0.25
-    uncertainty = np.ones(10) * 0.5
+    uncertainty = np.exp(np.linspace(0.1, 1.5, num=10)) * 0.25
+    # uncertainty = np.ones(10) * 0.5
     robot_corner = collision.robot.corner
-    for i in range(6, len(position)):
+    real_proba_list = []
+    upper_bound_list = []
+    circ_proba_list = []
+    for i in range(len(position)):
         collision.obstacle = Obstacle(position[i, 0], position[i, 1],
                                   width=width, length=length,
                                   angle=angle[i])
         collision.obstacle.pos_cov *= uncertainty[i] ** 2
         pos_cov = collision.obstacle.pos_cov
         collision.obstacle.ang_var *= uncertainty[i]
-        real_proba = monteCarlo(position[i, 0], position[i,1], pos_cov, robot_corner, ax=ax)
+        real_proba = collision.monteCarlo(num=1000)
         print("Real probability : {}".format(real_proba))
+        real_proba_list.append(real_proba)
         collision.obstacle.plot(ax)
         collision.cbPolygon()
-        collision.transformed_cb()
+        t_bbx, obst_center = collision.transformed_cb()
+
+        proba_est = compute_proba(obst_center=obst_center, cb=t_bbx)
+
+        upper_bound_list.append(proba_est)
+        print("Collision probability upper bound: {}".format(proba_est))
 
     ax.set_title("Robot-Obstacle Collision Detection")
+    plt.show()
+    plt.plot(real_proba_list, label='True Probability')
+    plt.plot(upper_bound_list, label='Elaborated Upper Bound')
+    plt.xlabel("trajectory point, k")
+    plt.ylabel("collision probability")
+    plt.title("Probability comparison")
+    plt.legend()
     plt.show()

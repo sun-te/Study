@@ -107,7 +107,7 @@ def close_polygone(arr):
 def phi(z):
     return 1/2 * (1 + erf(z/np.sqrt(2)))
 
-def compute_proba(cb, obst_center):
+def compute_proba(cb, obst_center, var=1.0):
     """
     return the probability upper bound defined in the article (Page919), equation (17)
     :param cb:
@@ -119,10 +119,10 @@ def compute_proba(cb, obst_center):
     x, y = obst_center[0], obst_center[1]
     max_x, min_x = np.max(cb[:, 0]), np.min(cb[:, 0])
     max_y, min_y = np.max(cb[:, 1]), np.min(cb[:, 1])
-    return (phi(max_x - x) - phi(min_x - x)) * (phi(max_y - y) - phi(min_y - y))
+    denom = np.sqrt(var)
+    return (phi((max_x - x) / denom) - phi((min_x - x) / denom)) * (phi((max_y - y) / denom) - phi((min_y - y) / denom) )
 
 def monteCarlo(x, y, cov, corner, num=50000, ax=None):
-    # TODO: Not the center cross but the edge cross should be counted
     pts = np.random.multivariate_normal([x, y], cov=cov, size=num)
     ax.scatter(pts.T[0], pts.T[1], s=1)
     max_x, min_x = np.max(corner[:, 0]), np.min(corner[:, 0])
@@ -138,3 +138,56 @@ def monteCarlo(x, y, cov, corner, num=50000, ax=None):
     for pt in pts:
         res += in_robot(pt)
     return res / num
+
+
+class Point(object):
+
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+
+
+# 向量
+class Vector(object):
+
+    def __init__(self, start_point, end_point):
+        self.start, self.end = start_point, end_point
+        self.x = end_point.x - start_point.x
+        self.y = end_point.y - start_point.y
+
+
+ZERO = 1e-9
+
+
+def negative(vector):
+    """取反"""
+    return Vector(vector.end, vector.start)
+
+
+def vector_product(vectorA, vectorB):
+    '''计算 x_1 * y_2 - x_2 * y_1'''
+    return vectorA.x * vectorB.y - vectorB.x * vectorA.y
+
+
+def is_intersected(A, B, C, D):
+    """
+    detect AB and CD segment crossing
+    :param A:
+    :param B:
+    :param C:
+    :param D:
+    :return:
+    """
+
+    '''A, B, C, D 为 Point 类型'''
+
+    AC = Vector(A, C)
+    AD = Vector(A, D)
+    BC = Vector(B, C)
+    BD = Vector(B, D)
+    CA = negative(AC)
+    CB = negative(BC)
+    DA = negative(AD)
+    DB = negative(BD)
+
+    return (vector_product(AC, AD) * vector_product(BC, BD) <= ZERO) \
+           and (vector_product(CA, CB) * vector_product(DA, DB) <= ZERO)
